@@ -19,7 +19,7 @@ const billingConfig = {
   },
 };
 
-const sessionStorage = new MySQLSessionStorage(`mysql://root:${process.env.dbPassword}@${process.env.dbUrl}:3306/${process.env.schema}`)
+const sessionStorage = new MySQLSessionStorage(`mysql://${process.env.dbUser}:${process.env.dbPassword}@${process.env.dbUrl}:3306/${process.env.schema}`)
 
 const shopify = shopifyApp({
   api: {
