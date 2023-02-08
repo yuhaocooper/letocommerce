@@ -24,8 +24,11 @@ const sessionStorage = new MySQLSessionStorage(`mysql://${process.env.dbUser}:${
 const shopify = shopifyApp({
   api: {
     apiVersion: LATEST_API_VERSION,
+    hostName: process.env.hostName, //can comment out in dev testing, but required for prod because we don't have the shopify app to provide it automatically
+    hostScheme: process.env.hostScheme, //can comment out in dev testing, but required for prod because we don't have the shopify app to provide it automatically
     restResources,
     billing: undefined, // or replace with billingConfig above to enable example billing
+
   },
   auth: {
     path: "/api/auth",
