@@ -97,7 +97,7 @@ app.get('/etsy/oauth', async(req,res)=>{
   };
 
   const params = new URLSearchParams({
-    grant_type: 'authorizatin_code',
+    grant_type: 'authorization_code',
     client_id: 'w78xtl1xq777jydqitur0jh4',
     redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
     code: 'xxx',
