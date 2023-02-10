@@ -7,6 +7,7 @@ import serveStatic from "serve-static";
 import shopify from "./shopify.js";
 import productCreator from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
+import { URLSearchParams } from "url";
 
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT, 10);
 
@@ -17,6 +18,7 @@ const STATIC_PATH =
 
 const app = express();
 
+///////////////////////////////////////////////////////////////////////SHOPIFY//////////////////////////////////////////////////////////////////////
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
@@ -63,5 +65,47 @@ app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res, _next) => {
     .set("Content-Type", "text/html")
     .send(readFileSync(join(STATIC_PATH, "index.html")));
 });
+///////////////////////////////////////////////////////////////////////SHOPIFY//////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////ETSY//////////////////////////////////////////////////////////////////////
+
+app.get('/etsy/auth', async(req,res)=> {
+  const requestOptions = {
+    'method': 'GET',
+  };
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: 'w78xtl1xq777jydqitur0jh4',
+    redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
+    scope: 'transactions_r%20transactions_w%20listings_d%20listings_r%20listings_w%20address_r%20address_w%20shops_w',
+    state: 'superstate',
+    code_challenge: 'xxx',
+    code_challenge_method: 'S256',
+  }).toString()
+
+  const response = await fetch(
+    'https://www.etsy.com/oauth/connect?' + params,
+    requestOptions  
+  );
+})
+
+
+app.get('/etsy/oauth', async(req,res)=>{
+  const requestOptions = {
+    'method': 'POST',
+  };
+
+  const params = new URLSearchParams({
+    grant_type: 'authorizatin_code',
+    client_id: 'w78xtl1xq777jydqitur0jh4',
+    redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
+    code: 'xxx',
+    code_verifier: 'xxx',
+  }).toString()
+
+})
+
+///////////////////////////////////////////////////////////////////////ETSY//////////////////////////////////////////////////////////////////////
 
 app.listen(PORT);
