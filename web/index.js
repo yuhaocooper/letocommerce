@@ -8,6 +8,7 @@ import shopify from "./shopify.js";
 import productCreator from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
 import { URLSearchParams } from "url";
+import {codeChallenge, state, codeVerifier} from "./code-generator.js"
 
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT, 10);
 
@@ -80,7 +81,7 @@ app.get('/etsy/auth', async(req,res)=> {
     redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
     scope: 'transactions_r%20transactions_w%20listings_d%20listings_r%20listings_w%20address_r%20address_w%20shops_w',
     state: 'superstate',
-    code_challenge: 'xxx',
+    code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   }).toString()
 
@@ -91,18 +92,30 @@ app.get('/etsy/auth', async(req,res)=> {
 })
 
 
-app.get('/etsy/oauth', async(req,res)=>{
-  const requestOptions = {
-    'method': 'POST',
-  };
+app.get('/etsy/auth/callback', async(req,res)=>{
+  const authCode = req.query.code
 
-  const params = new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: 'w78xtl1xq777jydqitur0jh4',
-    redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
-    code: 'xxx',
-    code_verifier: 'xxx',
-  }).toString()
+  if (req.query.state === 'superstate'){
+    const requestOptions = {
+      'method': 'POST',
+      'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+    };
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: 'w78xtl1xq777jydqitur0jh4',
+      redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
+      code: authCode,
+      code_verifier: codeVerifier,
+    }).toString()
+
+
+  }
+  if (req.query.error){
+    res.send(req.query.error_description)
+  }
+  else {
+    res.send ('Error: Unauthenticated access.')
+  }
 
 })
 

@@ -13,13 +13,14 @@ const sha256 = (buffer) => crypto.createHash("sha256").update(buffer).digest();
 
 // We’ll use the verifier to generate the challenge.
 // The verifier needs to be saved for a future step in the OAuth flow.
-const codeVerifier = base64URLEncode(crypto.randomBytes(32));
+export const codeVerifier = base64URLEncode(crypto.randomBytes(32));
 
 // With these functions, we can generate
 // the values needed for our OAuth authorization grant.
-const codeChallenge = base64URLEncode(sha256(codeVerifier));
-const state = Math.random().toString(36).substring(7);
+export const codeChallenge = base64URLEncode(sha256(codeVerifier));
+export const state = Math.random().toString(36).substring(7);
 
+console.log(base64URLEncode)
 console.log(`State: ${state}`);
 console.log(`Code challenge: ${codeChallenge}`);
 console.log(`Code verifier: ${codeVerifier}`);
