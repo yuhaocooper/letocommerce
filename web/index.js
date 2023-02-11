@@ -3,12 +3,13 @@ import { join } from "path";
 import { readFileSync } from "fs";
 import express from "express";
 import serveStatic from "serve-static";
+import mysql from "mysql"
+import { URLSearchParams } from "url";
 
 import shopify from "./shopify.js";
 import productCreator from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
-import { URLSearchParams } from "url";
-import {codeChallenge, state, codeVerifier} from "./code-generator.js"
+import {codeChallenge, state, codeVerifier, EtsyOAuth, EtsyOAuthCallback} from "./etsy.js"
 
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT, 10);
 
@@ -18,6 +19,19 @@ const STATIC_PATH =
     : `${process.cwd()}/frontend/`;
 
 const app = express();
+
+//Can probably use a db file here. Documentation: https://www.npmjs.com/package/mysql
+const db = mysql.createConnection({
+  host: process.env.dbUrl,
+  user: process.env.dbUser,
+  password: process.env.dbPassword,
+  database: "testSchema",
+})
+
+db.connect(function(err) {
+  if(err) throw err;
+  console.log("Connected!")
+}
 
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin());
@@ -34,65 +48,12 @@ app.post(
 //External
 //Need to test this actual one with Shopify embedded app. Not sure how to handle getting out of the iframe, if necessary.
 app.get('/etsy/auth', async(req,res)=> {
-  const requestOptions = {
-    'method': 'GET',
-  };
-
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: 'w78xtl1xq777jydqitur0jh4',
-    redirect_uri: `https://${process.env.hostName}/etsy/auth/callback`,
-    scope: 'transactions_r%20transactions_w%20listings_d%20listings_r%20listings_w%20address_r%20address_w%20shops_w',
-    state: 'superstate',
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-  }).toString()
-
-  fetch('https://www.etsy.com/oauth/connect?' + params,requestOptions)
-    .then((response) => {
-      //handle response
-      //middleware to call my etsy/auth/callback endpoint
-    })
-    .catch((err) => {
-      console.log('Error: '+err)
-    })
+  var shop = res.locals.shopify.session //match this session to find the shopName in db
+  EtsyOAuth(shop)
 })
 
 app.get('/etsy/auth/callback', async(req,res)=>{
-  const authCode = req.query.code
-
-  if (req.query.state === 'superstate'){
-    //Take returned code to send to Etsy's Oauth server for access token
-    const requestOptions = {
-      'method': 'POST',
-      'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
-    };
-    // @ts-ignore
-    const params = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: 'w78xtl1xq777jydqitur0jh4',
-      redirect_uri: `https://${process.env.hostName}/etsy/auth/callback`,
-      code: authCode,
-      code_verifier: codeVerifier,
-    }).toString()
-
-    fetch('https://www.etsy.com/oauth/token?' + params,requestOptions)
-      .then((response) => response.json())
-      .then((data) => {
-        const accessToken = data.access_token
-        const refresh_token = data.refresh_token
-        //store Etsy accessToken & refreshToken in DB. This was abstracted away in Shopify session, but I need a wrapper to do this for Etsy and also the other tables like Product, Orders and etc.
-      })
-      .catch((err) => {
-        console.log('Error: '+err)
-      })
-  }
-  if (req.query.error){
-    res.send(req.query.error_description)
-  }
-  else {
-    res.send ('Error: Unauthenticated access.')
-  }
+  EtsyOAuthCallback(req,shop)
 })
 
 // All endpoints after this point will require an active session
