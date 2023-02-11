@@ -19,7 +19,6 @@ const STATIC_PATH =
 
 const app = express();
 
-///////////////////////////////////////////////////////////////////////SHOPIFY//////////////////////////////////////////////////////////////////////
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
@@ -31,6 +30,70 @@ app.post(
   shopify.config.webhooks.path,
   shopify.processWebhooks({ webhookHandlers: GDPRWebhookHandlers })
 );
+
+//External
+//Need to test this actual one with Shopify embedded app. Not sure how to handle getting out of the iframe, if necessary.
+app.get('/etsy/auth', async(req,res)=> {
+  const requestOptions = {
+    'method': 'GET',
+  };
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: 'w78xtl1xq777jydqitur0jh4',
+    redirect_uri: `https://${process.env.hostName}/etsy/auth/callback`,
+    scope: 'transactions_r%20transactions_w%20listings_d%20listings_r%20listings_w%20address_r%20address_w%20shops_w',
+    state: 'superstate',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  }).toString()
+
+  fetch('https://www.etsy.com/oauth/connect?' + params,requestOptions)
+    .then((response) => {
+      //handle response
+      //middleware to call my etsy/auth/callback endpoint
+    })
+    .catch((err) => {
+      console.log('Error: '+err)
+    })
+})
+
+app.get('/etsy/auth/callback', async(req,res)=>{
+  const authCode = req.query.code
+
+  if (req.query.state === 'superstate'){
+    //Take returned code to send to Etsy's Oauth server for access token
+    const requestOptions = {
+      'method': 'POST',
+      'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+    };
+    // @ts-ignore
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: 'w78xtl1xq777jydqitur0jh4',
+      redirect_uri: `https://${process.env.hostName}/etsy/auth/callback`,
+      code: authCode,
+      code_verifier: codeVerifier,
+    }).toString()
+
+    fetch('https://www.etsy.com/oauth/token?' + params,requestOptions)
+      .then((response) => response.json())
+      .then((data) => {
+        const accessToken = data.access_token
+        const refresh_token = data.refresh_token
+        //store Etsy accessToken & refreshToken in DB. This was abstracted away in Shopify session, but I need a wrapper to do this for Etsy and also the other tables like Product, Orders and etc.
+      })
+      .catch((err) => {
+        console.log('Error: '+err)
+      })
+  }
+  if (req.query.error){
+    res.send(req.query.error_description)
+  }
+  else {
+    res.send ('Error: Unauthenticated access.')
+  }
+})
 
 // All endpoints after this point will require an active session
 app.use("/api/*", shopify.validateAuthenticatedSession());
@@ -66,59 +129,5 @@ app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res, _next) => {
     .set("Content-Type", "text/html")
     .send(readFileSync(join(STATIC_PATH, "index.html")));
 });
-///////////////////////////////////////////////////////////////////////SHOPIFY//////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////ETSY//////////////////////////////////////////////////////////////////////
-
-app.get('/etsy/auth', async(req,res)=> {
-  const requestOptions = {
-    'method': 'GET',
-  };
-
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: 'w78xtl1xq777jydqitur0jh4',
-    redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
-    scope: 'transactions_r%20transactions_w%20listings_d%20listings_r%20listings_w%20address_r%20address_w%20shops_w',
-    state: 'superstate',
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-  }).toString()
-
-  const response = await fetch(
-    'https://www.etsy.com/oauth/connect?' + params,
-    requestOptions  
-  );
-})
-
-
-app.get('/etsy/auth/callback', async(req,res)=>{
-  const authCode = req.query.code
-
-  if (req.query.state === 'superstate'){
-    const requestOptions = {
-      'method': 'POST',
-      'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
-    };
-    const params = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: 'w78xtl1xq777jydqitur0jh4',
-      redirect_uri: 'https://server.letocommerce.com/etsy/auth/callback',
-      code: authCode,
-      code_verifier: codeVerifier,
-    }).toString()
-
-
-  }
-  if (req.query.error){
-    res.send(req.query.error_description)
-  }
-  else {
-    res.send ('Error: Unauthenticated access.')
-  }
-
-})
-
-///////////////////////////////////////////////////////////////////////ETSY//////////////////////////////////////////////////////////////////////
 
 app.listen(PORT);
