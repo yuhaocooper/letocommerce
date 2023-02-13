@@ -13,8 +13,9 @@ const db = mysql.createConnection({
     database: "testSchema",
   })
 
-//Finds if shop exist in etsy_session table, and if the token has expired
-function authorizedOnEtsy(shop){
+//Etsy session table: shop, access_token, expiry (now+expires_in), refresh_token
+
+function QueryEtsyAuth(shop){
     const now = Date.now()
     db.connect(function(err) {
         if(err) throw err; //How can I make it so that the server will auto restart when it runs into an error instead of entirely stopping??
@@ -35,7 +36,21 @@ function authorizedOnEtsy(shop){
     )
 }
 
-//Etsy session table: shop, access_token, expiry (now+expires_in), refresh_token
+function QueryEtsyRefresh(shop){
+    const now = Date.now()
+    db.connect(function(err) {
+        if(err) throw err; //How can I make it so that the server will auto restart when it runs into an error instead of entirely stopping??
+        console.log("Connected!")
+        })
+    db.query(
+        `SELECT * FROM etsy_sessions WHERE shop ='${shop}'`,
+        function(err, results, fields) {
+            if (err) throw err;
+            console.log(results[0].refresh_token)
+            return results[0].refresh_token
+        }
+    )
+}
 
 function StoreEtsyAuth(shop, accessToken, expiry, refresh_token){
     db.connect(function(err) {

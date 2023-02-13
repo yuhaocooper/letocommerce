@@ -22,6 +22,12 @@ export const codeVerifier = base64URLEncode(crypto.randomBytes(32));
 export const codeChallenge = base64URLEncode(sha256(codeVerifier));
 export const state = Math.random().toString(36).substring(7);
 
+//Finds if shop exist in etsy_session table, and if the token has expired
+function AuthorizedOnEtsy(shop){
+  const authStatus = QueryEtsyAuth(shop)
+  return authStatus
+}
+
 export function EtsyOAuth(shop) {
     const requestOptions = {
         'method': 'GET',
@@ -80,7 +86,8 @@ export function EtsyOAuthCallback(req,shop) {
     }
 }
 
-function EtsyOAuthRefresh(refresh_token) {
+async function EtsyOAuthRefresh(shop) {
+  const refresh_token = await QueryEtsyRefresh(shop)
   const requestOptions = {
     'method': 'POST',
     'headers': {'Content-Type': 'application/x-www-form-urlencoded'},

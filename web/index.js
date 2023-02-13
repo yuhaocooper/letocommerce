@@ -37,7 +37,16 @@ app.post(
 app.get('/etsy/auth', async(req,res)=> {
   var shop = shopify.session.shop //match this session to find the shopName in db
   console.log(shop)
-  await authorizedOnEtsy(shop) ? res.send({Authorized: true}): EtsyOAuth(shop)
+  const authStatus = await AuthorizedOnEtsy(shop)
+  if (authStatus == false){
+    await EtsyOAuth(shop)
+  }
+  else if (authStatus == 'Expired'){
+    await EtsyOAuthRefresh(shop)
+  }
+  else{
+    return authStatus
+  }
 })
 
 app.get('/etsy/auth/callback', async(req,res)=>{
