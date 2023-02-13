@@ -66,9 +66,10 @@ export function EtsyOAuthCallback(req,shop) {
         .then((response) => response.json())
         .then((data) => {
           const accessToken = data.access_token
-          const expiry = data.expires_in
+          const expiry = date.now() + (data.expires_in * 1000)
           const refresh_token = data.refresh_token
           //store Etsy accessToken & refreshToken in DB. This was abstracted away in Shopify session, but I need a wrapper to do this for Etsy and also the other tables like Product, Orders and etc.
+          storeEtsyAuth(shop,accessToken, expiry, refresh_token)
         })
         .catch((err) => {
           console.log('Error: '+err)
@@ -79,14 +80,21 @@ export function EtsyOAuthCallback(req,shop) {
     }
 }
 
-function OAuthRefresh() {
-
-}
-
-function storeEtsyAuth() {
-
-}
-
-function updateEtsyAuth() {
-
+function EtsyOAuthRefresh(refresh_token) {
+  const requestOptions = {
+    'method': 'POST',
+    'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+  };
+  // @ts-ignore
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: 'w78xtl1xq777jydqitur0jh4',
+    refresh_token: refresh_token
+  }).toString()
+  fetch('https://api.etsy.com/v3/public/oauth/token?' + params,requestOptions)
+    .then((response) => response.json())
+    .then((data) => {
+      var expiry = Date.now() + (data.expires_in * 1000)
+      UpdateEtsyAuth(shop, data.access_token, expiry, data.refresh_token)
+    })
 }

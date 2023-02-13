@@ -13,25 +13,12 @@ import {codeChallenge, state, codeVerifier, EtsyOAuth, EtsyOAuthCallback} from "
 
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT, 10);
 
-const STATIC_PATH =
+const STATIC_PATH = 
   process.env.NODE_ENV === "production"
     ? `${process.cwd()}/frontend/dist`
     : `${process.cwd()}/frontend/`;
 
 const app = express();
-
-//Can probably use a db file here. Documentation: https://www.npmjs.com/package/mysql
-const db = mysql.createConnection({
-  host: process.env.dbUrl,
-  user: process.env.dbUser,
-  password: process.env.dbPassword,
-  database: "testSchema",
-})
-
-db.connect(function(err) {
-  if(err) throw err;
-  console.log("Connected!")
-}
 
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin());
@@ -48,11 +35,13 @@ app.post(
 //External
 //Need to test this actual one with Shopify embedded app. Not sure how to handle getting out of the iframe, if necessary.
 app.get('/etsy/auth', async(req,res)=> {
-  var shop = res.locals.shopify.session //match this session to find the shopName in db
-  EtsyOAuth(shop)
+  var shop = shopify.session.shop //match this session to find the shopName in db
+  console.log(shop)
+  await authorizedOnEtsy(shop) ? res.send({Authorized: true}): EtsyOAuth(shop)
 })
 
 app.get('/etsy/auth/callback', async(req,res)=>{
+  var shop = shopify.session.shop //match this session to find the shopName in db
   EtsyOAuthCallback(req,shop)
 })
 

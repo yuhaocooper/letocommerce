@@ -5,6 +5,9 @@ dotenv.config({
   path: "./.env",
 });
 
+
+
+
 //Db config
 const db = mysql.createConnection({
     host: process.env.dbUrl,
@@ -39,6 +42,8 @@ db.query(
         return
     }
     );
+
+
 
 //Delete
 db.connect(function(err) {
